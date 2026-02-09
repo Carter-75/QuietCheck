@@ -1,0 +1,71 @@
+name: quietcheck
+description: QuietCheck - Passive mental load and burnout detection for Android
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:       # CRITICAL: Required for every Flutter project - DO NOT REMOVE
+    sdk: flutter # CRITICAL: Required for every Flutter project - DO NOT REMOVE
+  
+  # CRITICAL: Core UI and responsive design - DO NOT REMOVE OR MODIFY
+  supabase_flutter: ^2.9.1
+  sizer: ^2.0.15              # Required for responsive design system
+  flutter_svg: ^2.0.9        # Required for SVG icon support
+  google_fonts: ^6.1.0       # Required for typography (replaces local fonts)
+  shared_preferences: ^2.2.2 # Required for local data storage
+  web: ^1.1.1
+  
+  # Feature dependencies - safe to modify
+  cached_network_image: ^3.3.1
+  connectivity_plus: ^6.1.4
+  dio: ^5.4.0
+  fluttertoast: ^8.2.4
+  fl_chart: ^0.65.0
+  smooth_page_indicator: ^2.0.1
+  lottie: ^3.3.2
+  url_launcher: ^6.3.1
+  pointycastle: ^4.0.0        # AES encryption for sensitive mental health data
+  crypto: ^3.0.7              # SHA hashing and key derivation for encryption
+  workmanager: ^0.9.0+3       # Periodic background task scheduling for activity data collection
+  app_usage: ^4.0.1           # Android app usage statistics tracking
+  battery_plus: ^7.0.0        # Battery status monitoring for efficient background task scheduling
+  permission_handler: ^12.0.1 # Permission handling for usage stats access
+  google_generative_ai: ^0.4.7 # Google Gemini AI SDK for behavioral pattern analysis and burnout detection
+  flutter_local_notifications: ^20.0.0 # Local push notifications for proactive burnout warnings (48-hour predictions)
+  in_app_purchase: ^3.2.3     # Google Play Store payment integration
+  flutter_tts: ^4.2.5         # Text-to-speech voice guidance for breathing exercises
+  health: ^13.1.4             # Android Health Connect integration for fitness metrics and sleep data
+  logger: ^2.5.0              # Structured logging with multiple outputs for debug console
+  stack_trace: ^1.11.1        # Stack trace parsing and formatting for crash reports
+  audioplayers: ^6.1.0        # Audio playback engine for sound pack system
+  flutter_native_splash: ^2.3.10 # Branded splash screen for Google Play Store
+  package_info_plus: ^4.2.0   # App version and build info for diagnostics
+  device_info_plus: ^9.1.1    # Device information for diagnostics
+  path_provider: ^2.1.2       # File system access for diagnostics export
+  share_plus: ^7.2.2          # Share diagnostics bundle
+  intl: ^0.19.0               # Localization and date formatting
+
+  firebase_analytics: any
+  firebase_core: any
+  firebase_crashlytics: any
+  universal_html: ^2.2.4
+dev_dependencies:
+  flutter_test:    # CRITICAL: Required for Flutter project testing - DO NOT REMOVE
+    sdk: flutter   # CRITICAL: Required for Flutter project testing - DO NOT REMOVE
+  flutter_lints: ^5.0.0 # CRITICAL: Required for code quality - DO NOT REMOVE
+
+flutter:
+  uses-material-design: true # CRITICAL: Required for Material icon font - DO NOT REMOVE
+  assets:
+    - assets/
+    - assets/images/
+  # CRITICAL ASSET MANAGEMENT RULES:
+  # - DO NOT ADD NEW ASSET DIRECTORIES (assets/svg/, assets/icons/, etc.)
+  # - ONLY USE EXISTING AND ITEMS AVAILABLE IN THE DIRECTORIES LISTED ABOVE (assets/, assets/images/)
+  
+  # CRITICAL FONTS RULE: 
+  # - THIS PROJECT USES GOOGLE FONTS INSTEAD OF LOCAL FONTS
+  # - DO NOT ADD ANY LOCAL FONTS SECTION OR FONT FILES

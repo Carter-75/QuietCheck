@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>QuietCheck</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>quietcheck</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>processing</string>
+		<string>remote-notification</string>
+	</array>
+	
+	<!-- Privacy Descriptions -->
+	<key>NSUserTrackingUsageDescription</key>
+	<string>QuietCheck monitors your device usage patterns to detect behavioral changes that may indicate increased mental load. All data is processed locally and encrypted.</string>
+	
+	<key>NSHealthShareUsageDescription</key>
+	<string>QuietCheck uses your health data (heart rate, sleep, activity) to detect stress patterns and prevent burnout. All data stays on your device and is never shared.</string>
+	
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>QuietCheck may log wellness events to your Health app with your permission.</string>
+	
+	<key>NSMotionUsageDescription</key>
+	<string>QuietCheck uses motion data to detect sedentary periods and activity patterns that may indicate stress or fatigue.</string>
+	
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>QuietCheck uses location context to suppress alerts during driving or commuting.</string>
+	
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>QuietCheck sends gentle alerts when it detects elevated mental load to help you take breaks and prevent burnout.</string>
+</dict>
+</plist>
