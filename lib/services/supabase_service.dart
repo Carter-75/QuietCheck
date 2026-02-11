@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:flutter/foundation.dart';
+
 class SupabaseService {
   static SupabaseService? _instance;
   static SupabaseService get instance => _instance ??= SupabaseService._();
@@ -28,4 +30,17 @@ class SupabaseService {
 
   // Get Supabase client
   SupabaseClient get client => Supabase.instance.client;
+
+
+
+  // Google Sign In (Browser-based OAuth)
+  static Future<void> signInWithGoogle() async {
+    // This will open the browser for authentication
+    // and redirect back to the app using the deep link:
+    // io.supabase.flutter://login-callback
+    await Supabase.instance.client.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: 'io.supabase.flutter://login-callback',
+    );
+  }
 }

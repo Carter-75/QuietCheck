@@ -8,8 +8,46 @@ param(
     [string]$AndroidSdkPath = ""
 )
 
-# Set execution policy for this session
-Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
+$ConfigFile = Join-Path $PSScriptRoot "flutter-path.conf"
+$FlutterCmd = "flutter"
+
+# Try to load formatted path from config
+if (Test-Path $ConfigFile) {
+    $FlutterCmd = Get-Content $ConfigFile -Raw
+    $FlutterCmd = $FlutterCmd.Trim()
+}
+
+# Check if command exists
+if (-not (Get-Command $FlutterCmd -ErrorAction SilentlyContinue)) {
+    # Try finding common locations
+    $CommonPaths = @(
+        "C:\src\flutter\bin\flutter.bat",
+        "C:\flutter\bin\flutter.bat",
+        "$env:LOCALAPPDATA\Programs\flutter\bin\flutter.bat",
+        "$env:USERPROFILE\scoop\apps\flutter\current\bin\flutter.bat",
+        "$env:ProgramData\chocolatey\bin\flutter.exe"
+    )
+    
+    $found = $false
+    foreach ($path in $CommonPaths) {
+        if (Test-Path $path) {
+            $FlutterCmd = $path
+            $found = $true
+            break
+        }
+    }
+    
+    if (-not $found) {
+        Write-Host "Flutter SDK not found automatically." -ForegroundColor Yellow
+        $userInput = Read-Host "Please enter the full path to your 'flutter.bat' (e.g. C:\src\flutter\bin\flutter.bat)"
+        if (-not [string]::IsNullOrWhiteSpace($userInput)) {
+            $FlutterCmd = $userInput.Trim('"') # Remove quotes if user added them
+            Set-Content -Path $ConfigFile -Value $FlutterCmd
+            Write-Host "Path saved to $ConfigFile" -ForegroundColor Green
+        }
+    }
+}
+Write-Host "Using Flutter: $FlutterCmd" -ForegroundColor Cyan
 
 Write-Host "================================================" -ForegroundColor Cyan
 Write-Host "     QuietCheck - Build and Deploy" -ForegroundColor Cyan  
@@ -96,7 +134,8 @@ if (Test-Path $BuildOutputDir) {
         Copy-Item $existingApk $backupApk -Force
         Write-Status "APK backup created" "SUCCESS"
     }
-} else {
+}
+else {
     Write-Status "No previous builds found, creating fresh builds directory..." "INFO"
     New-Item -Path $BuildOutputDir -ItemType Directory -Force | Out-Null
     Write-Status "Created builds directory: $BuildOutputDir" "SUCCESS"
@@ -108,10 +147,11 @@ Write-Host "        STEP 1: CLEANING PROJECT" -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
 
 Write-Status "Cleaning Flutter project..." "INFO"
-& flutter clean
+& $FlutterCmd clean
 if ($LASTEXITCODE -ne 0) {
     Write-Status "Flutter clean failed" "WARNING"
-} else {
+}
+else {
     Write-Status "Flutter clean completed" "SUCCESS"
 }
 
@@ -151,7 +191,8 @@ if (Test-Path $PubspecPath) {
         Set-Content -Path $PubspecPath -Value $pubspecContent -NoNewline
         
         Write-Status "Updated version: $currentVersionStr -> $newVersionStr" "SUCCESS"
-    } else {
+    }
+    else {
         Write-Status "Could not parse version in pubspec.yaml" "WARNING"
     }
 }
@@ -162,10 +203,37 @@ Write-Host "        STEP 3: KEYSTORE CHECK" -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
 
 if (-not (Test-Path $KeyPropertiesFile)) {
-    Write-Status "key.properties not found. Please ensure calling android/key.properties exists." "WARNING"
-    # We assume the user has set this up mostly, but ideally we'd automate generation like doomlings if missing.
-    # For now, we'll verify it exists to ensure build doesn't fail.
-} else {
+    Write-Status "key.properties not found. Generating new keystore..." "WARNING"
+    
+    # Check for keytool
+    if (Get-Command "keytool" -ErrorAction SilentlyContinue) {
+        $keystoreName = "upload-keystore.jks"
+        $keystorePath = Join-Path $AndroidDir "app\$keystoreName"
+        $alias = "upload"
+        $pass = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 16 | % { [char]$_ })
+        
+        Write-Status "Generating keystore at $keystorePath..." "INFO"
+        
+        # Generate Keystore
+        & keytool -genkey -v -keystore $keystorePath -storepass $pass -alias $alias -keypass $pass -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=QuietCheck, OU=Mobile, O=QuietCheck, L=Unknown, S=Unknown, C=US"
+        
+        if ($LASTEXITCODE -eq 0) {
+            # Create key.properties
+            $propContent = "storePassword=$pass`nkeyPassword=$pass`nkeyAlias=$alias`nstoreFile=$keystoreName"
+            Set-Content -Path $KeyPropertiesFile -Value $propContent
+            Write-Status "Created key.properties with new credentials." "SUCCESS"
+        }
+        else {
+            Write-Status "Failed to generate keystore." "ERROR"
+            exit 1
+        }
+    }
+    else {
+        Write-Status "keytool not found. Cannot generate keystore." "ERROR"
+        exit 1
+    }
+}
+else {
     Write-Status "key.properties found." "SUCCESS"
 }
 
@@ -175,27 +243,85 @@ Write-Host "        STEP 4: BUILDING FLUTTER APP" -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
 
 Write-Status "Getting dependencies..." "INFO"
-& flutter pub get
+& $FlutterCmd pub get
 if ($LASTEXITCODE -ne 0) {
     Write-Status "flutter pub get failed" "ERROR"
     exit 1
 }
 
-Write-Status "Building App Bundle (AAB)..." "INFO"
-& flutter build appbundle --release
-if ($LASTEXITCODE -ne 0) {
-    Write-Status "AAB build failed" "ERROR"
-    exit 1
+
+# Function to parse JSON and create Dart defines
+function Get-DartDefines {
+    $envFile = Join-Path $RootDir "env.json"
+    $defines = ""
+    if (Test-Path $envFile) {
+        Write-Status "Reading env.json for build configuration..." "INFO"
+        try {
+            $jsonContent = Get-Content $envFile -Raw | ConvertFrom-Json
+            $jsonContent.PSObject.Properties | ForEach-Object {
+                $checkKey = $_.Name
+                $checkVal = $_.Value
+                if (-not [string]::IsNullOrWhiteSpace($checkVal)) {
+                    # Escape quotes for PowerShell/Command Line
+                    # Use base64 encoding or simple string? Simple string with proper escaping is safer for complex values.
+                    # For standard keys, simple escaping should work. 
+                    # Flutter uses --dart-define=KEY=VALUE
+                    $defines += " --dart-define=$checkKey=$checkVal"
+                }
+            }
+        }
+        catch {
+            Write-Status "Error parsing env.json: $_" "WARNING"
+        }
+    }
+    return $defines
 }
-Write-Status "AAB build completed" "SUCCESS"
+
+$DartDefines = Get-DartDefines
+
+Write-Status "Building App Bundle (AAB)..." "INFO"
+# Invoke-Expression is needed to handle the dynamic string of arguments properly in some PS versions, 
+# or just passing the string to the command if using & operator might interpret it as one arg.
+# Constructing array of args is safer.
+
+$BuildArgsAab = @("build", "appbundle", "--release")
+if (-not [string]::IsNullOrWhiteSpace($DartDefines)) {
+    # Split defines string into array args (simple split by space might fail if values have spaces)
+    # Safer parsing:
+    $envFile = Join-Path $RootDir "env.json"
+    if (Test-Path $envFile) {
+        $jsonContent = Get-Content $envFile -Raw | ConvertFrom-Json
+        $jsonContent.PSObject.Properties | ForEach-Object {
+            $BuildArgsAab += "--dart-define=$($_.Name)=$($_.Value)"
+        }
+    }
+}
+
+# Write-Host "Running: $FlutterCmd $BuildArgsAab" -ForegroundColor DarkGray
+# & $FlutterCmd $BuildArgsAab
+# if ($LASTEXITCODE -ne 0) {
+#     Write-Status "AAB build failed" "ERROR"
+#     # exit 1 
+# }
+Write-Status "Skipping AAB build for emulator testing..." "WARNING"
 
 Write-Status "Building APK..." "INFO"
-& flutter build apk --release
+$BuildArgsApk = @("build", "apk", "--release")
+if (Test-Path $envFile) {
+    $jsonContent = Get-Content $envFile -Raw | ConvertFrom-Json
+    $jsonContent.PSObject.Properties | ForEach-Object {
+        $BuildArgsApk += "--dart-define=$($_.Name)=$($_.Value)"
+    }
+}
+
+& $FlutterCmd $BuildArgsApk
 if ($LASTEXITCODE -ne 0) {
     Write-Status "APK build failed" "WARNING"
-} else {
+}
+else {
     Write-Status "APK build completed" "SUCCESS"
 }
+
 
 Write-Host ""
 Write-Host "================================================" -ForegroundColor Cyan
@@ -207,7 +333,8 @@ if (Test-Path $AabSource) {
     $aabDest = Join-Path $BuildOutputDir "app-release.aab"
     Copy-Item $AabSource $aabDest -Force
     Write-Status "Copied AAB to $aabDest" "SUCCESS"
-} else {
+}
+else {
     Write-Status "AAB source not found at $AabSource" "ERROR"
 }
 
@@ -235,7 +362,8 @@ if (-not $SkipGit) {
     & git push
     if ($LASTEXITCODE -eq 0) {
         Write-Status "Pushed successfully" "SUCCESS"
-    } else {
+    }
+    else {
         Write-Status "Push failed (check credentials)" "WARNING"
     }
 }
